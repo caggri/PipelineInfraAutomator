@@ -1,0 +1,71 @@
+---
+- name: Install Jenkins
+  hosts: jenkins
+  remote_user: ec2-user
+  gather_facts: no
+  tasks:
+  - name: Download jenkins repo
+    get_url:
+      url: https://pkg.jenkins.io/redhat/jenkins.repo
+      dest: /etc/yum.repos.d/jenkins.repo
+      mode: '0644'
+    tags: jenkins
+
+  - name: Import Key
+    ansible.builtin.shell:
+      cmd: sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key
+    tags: jenkins
+
+  - name: Attach EPEL
+    ansible.builtin.command:
+      cmd: sudo amazon-linux-extras install java-openjdk11 -y
+    tags: jenkins 
+    
+  - name: yum update
+    ansible.builtin.yum:
+      name: '*'
+      state: latest
+    tags: jenkins
+
+  - name: attach linux extras
+    ansible.builtin.shell:
+      cmd: sudo amazon-linux-extras install epel -y
+    tags: jenkins
+
+  - name: Install jenkins
+    ansible.builtin.yum:
+      name: 'jenkins'
+      state: latest
+    tags: jenkins
+
+  - name: daemon-reload to pick up config changes
+    ansible.builtin.systemd:
+      daemon_reload: yes
+    tags: jenkins
+
+  - name: Start jenkins
+    ansible.builtin.systemd:
+      name: jenkins
+      state: started
+    tags: jenkins
+
+  - name: Pause for 5 seconds to build get initial password
+    ansible.builtin.pause:
+      seconds: 5
+    tags: jenkins
+
+  - name: Unlock Jenkins Code
+    ansible.builtin.command: "sudo cat /var/lib/jenkins/secrets/initialAdminPassword"
+    become: yes
+    become_user: root
+    register: secret
+    tags: jenkins
+
+  - name: Print return information from the previous task
+    ansible.builtin.debug: msg="Jenkins Unlock Password -> {{ secret.stdout }}"
+    
+  - name: Get Initial Password
+    ansible.builtin.fetch:
+      flat: no
+      src: /var/lib/jenkins/secrets/initialAdminPassword
+      dest: ../output/
