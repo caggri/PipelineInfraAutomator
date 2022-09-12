@@ -44,7 +44,7 @@ Get the subnet ID and security group ID and paste them into the relevant fields 
 ## Running the Automation
 Just type 
 ```
-packer build -parallel-builds=1 first.pkr.hcl   
+packer build -parallel-builds=1 jenkins.pkr.hcl   
 ```
 
 
