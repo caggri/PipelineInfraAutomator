@@ -1,0 +1,79 @@
+---
+- name: Installing and Configuring Jenkins
+  hosts: all
+  vars_prompt:
+  - name: password
+    prompt: Enter password to set initial password
+  remote_user: ec2-user
+  gather_facts: no
+  tasks:
+  - name: Update all yum packages
+    yum:
+      name: '*'
+      state: latest
+  - name: Ensure EPEL repo present
+    yum:
+      name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+      state: present
+  - name: Download Java 17
+    ansible.builtin.get_url:
+      url: https://download.oracle.com/java/17/latest/jdk-17_linux-x64_bin.rpm
+      dest: /opt/jdk-17_linux-x64_bin.rpm
+  - name: Install Java 17 and 8
+    yum:
+      name: 
+        - /opt/jdk-17_linux-x64_bin.rpm
+        - java-1.8.0-openjdk-devel 
+      state: present
+  - name: Download Jenkins repo
+    get_url:
+      url: http://pkg.jenkins-ci.org/redhat-stable/jenkins.repo
+      dest: /etc/yum.repos.d/jenkins.repo
+      mode: '0644'
+  - name: Import Jenkins key from a url
+    ansible.builtin.rpm_key:
+      state: present
+      key: https://jenkins-ci.org/redhat/jenkins-ci.org.key
+  - name: Install Jenkins, pip and xmlstarlet
+    yum:
+      name: 
+        - jenkins
+        - xmlstarlet
+        - pip
+      state: present
+  - name: Install bcrypt python package
+    command: pip install bcrypt
+  - name: Pause for 10 seconds 
+    ansible.builtin.pause:
+      seconds: 10
+  - name: Start service jenkins, if not started
+    ansible.builtin.service:
+      name: jenkins
+      state: started
+  - name: Execute Password script
+    script: script.py {{ password }}
+    register: hashed_password
+  - name: Locate admin user home folder
+    ansible.builtin.find:
+      paths: /var/lib/jenkins/users/
+      file_type: directory
+      patterns: "^admin.*?$"
+      use_regex: yes
+    register:  adminfolder
+  - name: Make password change
+    command : "xmlstarlet -q ed --inplace -u \"/user/properties/hudson.security.HudsonPrivateSecurityRealm_-Details/passwordHash\" -v '#jbcrypt:'{{ hashed_password.stdout_lines[0] }} {{ adminfolder.files[0].path }}/config.xml"
+  - name: Restart Jenkins Service
+    ansible.builtin.service:
+      name: jenkins
+      state: restarted
+  - name: Download Jenkins CLI 
+    get_url:
+      url: http://localhost:8080/jnlpJars/jenkins-cli.jar
+      dest: /var/lib/jenkins/jenkins-cli.jar
+  - name: Include Plugin Variables
+    include_vars: ./plugins
+  - name: Ensure Plugins Installed
+    command: java -jar /var/lib/jenkins//jenkins-cli.jar -s http://127.0.0.1:8080/ -auth admin:{{ password }} install-plugin {{ item }}
+    loop: "{{ plugin }}"
+  - name: Restart Jenkins
+    command: java -jar /var/lib/jenkins//jenkins-cli.jar -s http://127.0.0.1:8080/ -auth admin:{{ password }} safe-restart

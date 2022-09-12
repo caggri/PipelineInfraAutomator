@@ -1,0 +1,19 @@
+plugin:
+  - cloudbees-folder
+  - antisamy-markup-formatter
+  - build-timeout
+  - credentials-binding
+  - timestamper
+  - ws-cleanup
+  - ant
+  - gradle
+  - github-branch-source
+  - pipeline-github-lib
+  - pipeline-stage-view
+  - git
+  - ssh-agent
+  - ssh-slaves
+  - mailer
+  - matrix-auth
+  - pam-auth
+  - email-ext

@@ -1,0 +1,16 @@
+<slave>
+  <name>$NODE_NAME</name>
+  <description>Linux Slave</description>
+  <remoteFS>/opt/jenkins-slave</remoteFS>
+  <numExecutors>2</numExecutors>
+  <mode>NORMAL</mode>
+  <retentionStrategy class="hudson.slaves.RetentionStrategy\$Always"/>
+  <launcher class="hudson.plugins.sshslaves.SSHLauncher" plugin="ssh-slaves@1.5">
+    <host>{{ item }}</host>
+    <port>22</port>
+    <credentialsId>jenkins-slave</credentialsId>
+  </launcher>
+  <label>slave</label>
+  <nodeProperties/>
+  <userId>admin</userId>
+</slave>

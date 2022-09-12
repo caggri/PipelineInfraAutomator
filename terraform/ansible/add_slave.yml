@@ -1,0 +1,77 @@
+---
+- name: Add Slaves to the Jenkins Cluster / User-permission settings
+  hosts: slave
+  gather_facts: no
+  vars_prompt:
+  - name: password
+    prompt: Enter Jenkins password
+  remote_user: ec2-user
+  tasks:
+  - name: Start service jenkins, if not started
+    ansible.builtin.service:
+      name: jenkins
+      state: started
+  - name: Add the user 'jenkins-slave' 
+    ansible.builtin.user:
+      name: jenkins-slave
+  - name: Creates slave working directory
+    file:
+      path: /opt/jenkins-slave
+      state: directory
+      owner: jenkins-slave
+      group: jenkins-slave
+      mode: '0770'
+  - name: Create .ssh directory if it does not exist
+    ansible.builtin.file:
+      path: /home/jenkins-slave/.ssh
+      state: directory
+      owner: jenkins-slave
+      group: jenkins-slave
+      mode: '0700'
+  - name: Copy slave_key.pub
+    ansible.builtin.copy:
+      src: keys/slave_key.pub
+      dest: /home/jenkins-slave/.ssh/authorized_keys
+      owner: jenkins-slave
+      group: jenkins-slave
+      mode: '0644'
+  - name: Copy slave_key
+    ansible.builtin.copy:
+      src: keys/slave_key
+      dest: /opt/slave_key
+      owner: root
+      group: root
+      mode: u=r
+
+- name: Add Slaves to the Jenkins Cluster / Slave Registeration
+  hosts: master
+  gather_facts: no
+  remote_user: ec2-user
+  tasks:
+  - name: Start service jenkins, if not started
+    ansible.builtin.service:
+      name: jenkins
+      state: started
+  - name: Copy slave_key to Master
+    ansible.builtin.copy:
+      src: keys/slave_key
+      dest: /opt/slave_key
+      owner: root
+      group: root
+      mode: '0400'
+  - name: Create credentials.xml file
+    ansible.builtin.template:
+      src: ./cred.j2
+      dest: /opt/credentials.xml
+  - name: Add user
+    shell: java -jar /var/lib/jenkins/jenkins-cli.jar -s http://localhost:8080 -auth admin:{{ password }} create-credentials-by-xml system::system::jenkins _ < /opt/credentials.xml
+  - name: Slave xml configuration emplate a file to /etc/file.conf
+    ansible.builtin.template:
+      src: ./add_slave.j2
+      dest: /opt/slave-{{ item }}.xml
+    with_items: 
+      - "{{ groups['slave'] }}" 
+  - name: Add Slave
+    shell: cat /opt/slave-{{ item }}.xml | java -jar /var/lib/jenkins/jenkins-cli.jar -s http://localhost:8080 -auth admin:{{ password }} create-node slave-{{ item }}
+    with_items: 
+    - "{{ groups['slave'] }}" 

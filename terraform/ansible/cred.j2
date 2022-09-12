@@ -1,0 +1,12 @@
+<com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey plugin="ssh-credentials@305.v8f4381501156">
+  <scope>SYSTEM</scope>
+  <id>jenkins-slave</id>
+  <description>jenkins-slave</description>
+  <username>jenkins-slave</username>
+  <usernameSecret>false</usernameSecret>
+  <privateKeySource class="com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey$DirectEntryPrivateKeySource">
+    <privateKey>
+      {% include 'keys/slave_key' %}
+    </privateKey>
+  </privateKeySource>
+</com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey>
